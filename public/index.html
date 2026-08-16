@@ -21,15 +21,8 @@
       padding: 20px;
     }
     .container { max-width: 480px; margin: 0 auto; }
-    .header {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    .header h1 {
-      font-size: 1.8rem;
-      color: var(--green);
-      margin-bottom: 4px;
-    }
+    .header { text-align: center; margin-bottom: 24px; }
+    .header h1 { font-size: 1.8rem; color: var(--green); margin-bottom: 4px; }
     .header p { color: var(--muted); font-size: 0.9rem; }
     .card {
       background: var(--card);
@@ -40,16 +33,12 @@
     }
     .balance-label { color: var(--muted); font-size: 0.85rem; margin-bottom: 6px; }
     .balance-amount {
-      font-size: 2.4rem;
+      font-size: 2.5rem;
       font-weight: 700;
       color: var(--green);
       letter-spacing: -1px;
     }
-    .safe {
-      font-size: 0.95rem;
-      color: var(--muted);
-      margin-top: 8px;
-    }
+    .safe { font-size: 0.95rem; color: var(--muted); margin-top: 8px; }
     .badge {
       display: inline-block;
       background: #22c55e33;
@@ -67,7 +56,7 @@
       gap: 12px;
       margin-top: 20px;
     }
-    button, .btn {
+    button {
       background: var(--green);
       color: white;
       border: none;
@@ -92,13 +81,9 @@
       margin-bottom: 12px;
     }
     label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 0.85rem; }
-    .log {
-      max-height: 280px;
-      overflow-y: auto;
-      font-size: 0.85rem;
-    }
+    .log { max-height: 300px; overflow-y: auto; font-size: 0.85rem; }
     .log-item {
-      padding: 10px 0;
+      padding: 12px 0;
       border-bottom: 1px solid #334155;
     }
     .log-item.success { border-left: 3px solid var(--green); padding-left: 10px; }
@@ -107,27 +92,60 @@
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.75);
       align-items: center;
       justify-content: center;
       z-index: 100;
+      padding: 20px;
     }
     .modal.active { display: flex; }
     .modal-content {
       background: var(--card);
       padding: 24px;
       border-radius: 16px;
-      width: 90%;
+      width: 100%;
       max-width: 400px;
+      max-height: 90vh;
+      overflow-y: auto;
     }
-    .status { text-align: center; color: var(--muted); font-size: 0.8rem; margin-top: 20px; }
+    .receipt {
+      text-align: center;
+      padding: 10px 0;
+    }
+    .receipt .amount {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--green);
+      margin: 12px 0;
+    }
+    .receipt-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px dashed #334155;
+      font-size: 0.9rem;
+    }
+    .status { text-align: center; color: var(--muted); font-size: 0.8rem; margin-top: 16px; }
+    .pin-dots {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin: 20px 0;
+    }
+    .pin-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #334155;
+    }
+    .pin-dot.filled { background: var(--green); }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
       <h1>💚 OPay Simulator</h1>
-      <p>Local Wallet • Real Feel • Full Audit</p>
+      <p>Local Wallet • PIN • Banks • Receipts</p>
     </div>
 
     <div class="card">
@@ -149,24 +167,51 @@
       <div class="log" id="log">Loading...</div>
     </div>
 
-    <div class="status" id="status">Connected to local simulator</div>
+    <div class="status" id="status">Connected • PIN protected</div>
   </div>
 
-  <!-- Modal -->
+  <!-- Generic Modal -->
   <div class="modal" id="modal">
     <div class="modal-content">
       <h3 id="modalTitle" style="margin-bottom:16px">Action</h3>
       <div id="modalBody"></div>
-      <div style="display:flex;gap:10px;margin-top:16px">
+      <div style="display:flex;gap:10px;margin-top:16px" id="modalButtons">
         <button onclick="closeModal()" class="secondary" style="flex:1">Cancel</button>
         <button onclick="submitModal()" style="flex:1" id="modalSubmit">Confirm</button>
       </div>
     </div>
   </div>
 
+  <!-- PIN Modal -->
+  <div class="modal" id="pinModal">
+    <div class="modal-content" style="text-align:center">
+      <h3>Enter PIN</h3>
+      <p style="color:#94a3b8;margin:8px 0 0">Default PIN is <strong>1234</strong></p>
+      <div class="pin-dots" id="pinDots">
+        <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+      </div>
+      <input type="password" id="pinInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" 
+             style="text-align:center;font-size:1.4rem;letter-spacing:8px" placeholder="••••" />
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button onclick="closePinModal()" class="secondary" style="flex:1">Cancel</button>
+        <button onclick="verifyPin()" style="flex:1">Unlock</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    const API = window.location.origin; // same origin when served by express
+    const API = window.location.origin;
     let currentAction = null;
+    let pendingTransferData = null;
+    let isUnlocked = sessionStorage.getItem('opay_unlocked') === 'true';
+
+    // Nigerian banks (common ones)
+    const BANKS = [
+      "Access Bank", "Zenith Bank", "GTBank", "First Bank", "UBA",
+      "Fidelity Bank", "Union Bank", "Stanbic IBTC", "Sterling Bank",
+      "Wema Bank", "Polaris Bank", "Keystone Bank", "FCMB",
+      "Ecobank", "Heritage Bank", "Unity Bank", "OPay", "PalmPay", "Kuda"
+    ];
 
     async function api(method, path, body) {
       const res = await fetch(API + path, {
@@ -175,6 +220,44 @@
         body: body ? JSON.stringify(body) : undefined
       });
       return res.json();
+    }
+
+    function requirePin(callback) {
+      if (isUnlocked) return callback();
+      pendingAction = callback;
+      document.getElementById('pinModal').classList.add('active');
+      document.getElementById('pinInput').value = '';
+      document.getElementById('pinInput').focus();
+      updatePinDots();
+    }
+
+    let pendingAction = null;
+
+    function updatePinDots() {
+      const val = document.getElementById('pinInput').value;
+      const dots = document.querySelectorAll('#pinDots .pin-dot');
+      dots.forEach((d, i) => d.classList.toggle('filled', i < val.length));
+    }
+
+    document.getElementById('pinInput')?.addEventListener('input', updatePinDots);
+
+    function verifyPin() {
+      const pin = document.getElementById('pinInput').value;
+      if (pin === '1234') {
+        isUnlocked = true;
+        sessionStorage.setItem('opay_unlocked', 'true');
+        closePinModal();
+        if (pendingAction) pendingAction();
+      } else {
+        alert('Wrong PIN. Default is 1234');
+        document.getElementById('pinInput').value = '';
+        updatePinDots();
+      }
+    }
+
+    function closePinModal() {
+      document.getElementById('pinModal').classList.remove('active');
+      pendingAction = null;
     }
 
     async function refresh() {
@@ -197,105 +280,176 @@
         }
         loadLedger();
       } catch (e) {
-        document.getElementById('status').textContent = 'Server not running. Start with: npm start';
+        document.getElementById('status').textContent = 'Server offline. Run: npm start';
       }
     }
 
     async function loadLedger() {
-      const r = await api('GET', '/ledger?limit=15');
+      const r = await api('GET', '/ledger?limit=12');
       const log = document.getElementById('log');
-      if (!r.data || r.data.length === 0) {
+      if (!r.data || !r.data.length) {
         log.innerHTML = '<div style="color:#94a3b8">No transactions yet</div>';
         return;
       }
       log.innerHTML = r.data.map(e => `
-        <div class="log-item ${e.type === 'credit' || e.type === 'release' ? 'success' : ''}">
-          <strong>${e.type.toUpperCase()}</strong> ₦${(e.amount/100).toLocaleString()} 
+        <div class="log-item ${['credit','release'].includes(e.type) ? 'success' : ''}">
+          <strong>${e.type.toUpperCase()}</strong> ₦${(e.amount/100).toLocaleString()}
           <span style="float:right;color:#94a3b8">${new Date(e.timestamp).toLocaleTimeString()}</span><br/>
-          <small>${e.meta?.reason || ''} → ₦${(e.afterBalance/100).toLocaleString()}</small>
+          <small>${e.meta?.reason || e.meta?.recipient || ''} → ₦${(e.afterBalance/100).toLocaleString()}</small>
         </div>
       `).join('');
     }
 
     async function loadAudit() {
-      const r = await api('GET', '/audit?limit=20');
-      const log = document.getElementById('log');
-      log.innerHTML = r.data.map(e => `
-        <div class="log-item ${e.success ? 'success' : 'fail'}">
-          <strong>${e.action}</strong> ${e.success ? '✅' : '❌'}
-          <span style="float:right;color:#94a3b8">${new Date(e.timestamp).toLocaleTimeString()}</span><br/>
-          <small>${e.errorMessage || e.reason || ''} ${e.amount ? '₦'+(e.amount/100).toLocaleString() : ''}</small>
-        </div>
-      `).join('');
+      requirePin(async () => {
+        const r = await api('GET', '/audit?limit=25');
+        const log = document.getElementById('log');
+        log.innerHTML = r.data.map(e => `
+          <div class="log-item ${e.success ? 'success' : 'fail'}">
+            <strong>${e.action}</strong> ${e.success ? '✅' : '❌'}
+            <span style="float:right;color:#94a3b8">${new Date(e.timestamp).toLocaleTimeString()}</span><br/>
+            <small>${e.errorMessage || e.reason || ''} ${e.amount ? '₦'+(e.amount/100).toLocaleString() : ''}</small>
+          </div>
+        `).join('');
+      });
     }
 
     function openModal(type) {
-      currentAction = type;
-      const modal = document.getElementById('modal');
-      const title = document.getElementById('modalTitle');
-      const body = document.getElementById('modalBody');
-      modal.classList.add('active');
+      requirePin(() => {
+        currentAction = type;
+        const modal = document.getElementById('modal');
+        const title = document.getElementById('modalTitle');
+        const body = document.getElementById('modalBody');
+        const buttons = document.getElementById('modalButtons');
+        buttons.style.display = 'flex';
+        modal.classList.add('active');
 
-      if (type === 'topup') {
-        title.textContent = 'Top Up Wallet';
-        body.innerHTML = `
-          <label>Amount (₦)</label>
-          <input type="number" id="amount" placeholder="e.g. 5000" min="1" />
-          <label>Reason (optional)</label>
-          <input type="text" id="reason" placeholder="Salary, gift, etc." />
-        `;
-      } else if (type === 'transfer') {
-        title.textContent = 'Transfer Money';
-        body.innerHTML = `
-          <label>Amount (₦)</label>
-          <input type="number" id="amount" placeholder="e.g. 1000" min="1" />
-          <label>Recipient (name or account)</label>
-          <input type="text" id="recipient" placeholder="John Doe / 0803..." />
-          <label>Reason (optional)</label>
-          <input type="text" id="reason" placeholder="Payment for..." />
-        `;
-      }
+        if (type === 'topup') {
+          title.textContent = 'Top Up Wallet';
+          body.innerHTML = `
+            <label>Amount (₦)</label>
+            <input type="number" id="amount" placeholder="e.g. 5000" min="1" />
+            <label>Reason (optional)</label>
+            <input type="text" id="reason" placeholder="Salary, gift..." />
+          `;
+        } else if (type === 'transfer') {
+          title.textContent = 'Transfer Money';
+          body.innerHTML = `
+            <label>Amount (₦)</label>
+            <input type="number" id="amount" placeholder="e.g. 1500" min="1" />
+            <label>Bank</label>
+            <select id="bank">
+              ${BANKS.map(b => `<option value="${b}">${b}</option>`).join('')}
+            </select>
+            <label>Account Number / Phone</label>
+            <input type="text" id="account" placeholder="0123456789 or 0803..." />
+            <label>Recipient Name</label>
+            <input type="text" id="recipient" placeholder="John Doe" />
+            <label>Narration (optional)</label>
+            <input type="text" id="reason" placeholder="Payment for..." />
+          `;
+        }
+      });
     }
 
     function closeModal() {
       document.getElementById('modal').classList.remove('active');
+      currentAction = null;
+      pendingTransferData = null;
     }
 
     async function submitModal() {
-      const amountNaira = parseFloat(document.getElementById('amount').value) || 0;
-      const amount = Math.round(amountNaira * 100); // to kobo
+      const amountNaira = parseFloat(document.getElementById('amount')?.value) || 0;
+      const amount = Math.round(amountNaira * 100);
       const reason = document.getElementById('reason')?.value || '';
-      const recipient = document.getElementById('recipient')?.value || 'unknown';
 
       if (amount <= 0) return alert('Enter a valid amount');
 
-      let r;
       if (currentAction === 'topup') {
-        r = await api('POST', '/topup', { amount, reason });
-      } else {
-        r = await api('POST', '/transfer', { amount, reason, recipient });
-      }
+        const r = await api('POST', '/topup', { amount, reason });
+        if (r.success) {
+          showReceipt({
+            type: 'Top Up',
+            amount: amountNaira,
+            reference: r.data.entry.id,
+            newBalance: r.data.newAvailable,
+            status: 'Successful'
+          });
+          refresh();
+        } else alert(r.message);
+      } else if (currentAction === 'transfer') {
+        const bank = document.getElementById('bank').value;
+        const account = document.getElementById('account').value;
+        const recipient = document.getElementById('recipient').value || 'Unknown';
 
-      if (r.success) {
-        alert(r.message);
-        closeModal();
-        refresh();
-      } else {
-        alert(r.message || 'Failed');
+        if (!account) return alert('Enter account number or phone');
+
+        const r = await api('POST', '/transfer', {
+          amount,
+          reason,
+          recipient: `${recipient} (${bank} • ${account})`,
+          bank,
+          account
+        });
+
+        if (r.success) {
+          showReceipt({
+            type: 'Transfer',
+            amount: amountNaira,
+            recipient: `${recipient}`,
+            bank,
+            account,
+            reference: r.data.reference,
+            newBalance: r.data.newAvailable,
+            status: 'Successful'
+          });
+          refresh();
+        } else {
+          alert(r.message || 'Transfer failed');
+        }
       }
+    }
+
+    function showReceipt(data) {
+      const modal = document.getElementById('modal');
+      const title = document.getElementById('modalTitle');
+      const body = document.getElementById('modalBody');
+      const buttons = document.getElementById('modalButtons');
+
+      title.textContent = 'Transaction Receipt';
+      buttons.style.display = 'none';
+
+      body.innerHTML = `
+        <div class="receipt">
+          <div style="font-size:2.5rem;margin-bottom:8px">✅</div>
+          <div style="color:#4ade80;font-weight:600">${data.status}</div>
+          <div class="amount">₦${data.amount.toLocaleString()}</div>
+          <div class="receipt-row"><span>Type</span><span>${data.type}</span></div>
+          ${data.recipient ? `<div class="receipt-row"><span>To</span><span>${data.recipient}</span></div>` : ''}
+          ${data.bank ? `<div class="receipt-row"><span>Bank</span><span>${data.bank}</span></div>` : ''}
+          ${data.account ? `<div class="receipt-row"><span>Account</span><span>${data.account}</span></div>` : ''}
+          <div class="receipt-row"><span>Reference</span><span style="font-size:0.75rem">${data.reference}</span></div>
+          <div class="receipt-row"><span>New Balance</span><span>₦${(data.newBalance/100).toLocaleString()}</span></div>
+          <div class="receipt-row"><span>Time</span><span>${new Date().toLocaleString()}</span></div>
+          <button onclick="closeModal()" style="width:100%;margin-top:20px">Done</button>
+        </div>
+      `;
+      modal.classList.add('active');
     }
 
     async function toggleUnlimited() {
-      const badge = document.getElementById('badge');
-      const currentlyOn = badge.textContent.includes('UNLIMITED');
-      const r = await api('POST', '/unlimited', { enabled: !currentlyOn });
-      alert(r.message);
-      refresh();
+      requirePin(async () => {
+        const badge = document.getElementById('badge');
+        const currentlyOn = badge.textContent.includes('UNLIMITED');
+        const r = await api('POST', '/unlimited', { enabled: !currentlyOn });
+        alert(r.message);
+        refresh();
+      });
     }
 
-    // Auto refresh every 8s
+    // Init
     refresh();
-    setInterval(refresh, 8000);
+    setInterval(refresh, 10000);
   </script>
 </body>
 </html>
