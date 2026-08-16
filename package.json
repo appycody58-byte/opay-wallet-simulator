@@ -1,0 +1,21 @@
+{
+  "name": "opay-wallet-simulator",
+  "version": "1.0.0",
+  "description": "Full mad-scientist local OPay wallet simulator with available balance, unlimited mode, ledger & microservice",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "cli": "node cli.js",
+    "test": "node test.js"
+  },
+  "keywords": ["opay", "wallet", "balance", "fintech", "simulator", "microservice"],
+  "author": "AppyCody x Grok",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.0",
+    "cors": "^2.8.5",
+    "uuid": "^10.0.0",
+    "chalk": "^4.1.2"
+  }
+}
