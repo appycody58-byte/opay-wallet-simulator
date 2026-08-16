@@ -1,6 +1,6 @@
 /**
- * 🔥 OPay Wallet Simulator - Full Mad Scientist Edition
- * + 🛡️ Transaction Audit Logging (immutable-style, full context, failed attempts)
+ * 🔥 OPay Wallet Simulator v1.2 — Real Frontend + Webhooks + Multi-Merchant ready
+ * Transfers feel normal. Full audit. Ready to use right now.
  */
 
 const express = require('express');
@@ -8,53 +8,61 @@ const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 
 const app = express();
 const PORT = process.env.PORT || 4090;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public'))); // serve frontend
 
-// ====================== DATA STORE ======================
+// ====================== DATA ======================
 const DATA_FILE = path.join(__dirname, 'data', 'wallet.json');
 const AUDIT_FILE = path.join(__dirname, 'data', 'audit.log.json');
 
 let state = {
-  merchantId: '2566-SIMULATOR-001',
-  merchantName: 'OPay Local God Mode',
-  currency: 'NGN',
-  availableBalance: 15000000, // ₦150,000.00 in kobo
-  pendingBalance: 0,
-  reservedBalance: 0,
-  unlimitedMode: false,
-  ledger: [],
-  lastUpdated: new Date().toISOString()
+  merchants: {
+    '2566-SIMULATOR-001': {
+      merchantId: '2566-SIMULATOR-001',
+      merchantName: 'OPay Local God Mode',
+      currency: 'NGN',
+      availableBalance: 15000000,
+      pendingBalance: 0,
+      reservedBalance: 0,
+      unlimitedMode: false,
+      ledger: [],
+      webhookUrl: null,
+      lastUpdated: new Date().toISOString()
+    }
+  },
+  defaultMerchant: '2566-SIMULATOR-001'
 };
 
-let auditLog = []; // Separate, more detailed, append-only style audit trail
+let auditLog = [];
 
-// Load or create data
 function loadState() {
   try {
     if (fs.existsSync(DATA_FILE)) {
-      state = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-      console.log('💾 Wallet state loaded from disk');
-    } else {
-      saveState();
-    }
-  } catch (e) {
-    console.warn('⚠️  Starting with fresh god-mode wallet');
-  }
+      const raw = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      // migrate old single-wallet format if needed
+      if (raw.availableBalance !== undefined) {
+        state.merchants['2566-SIMULATOR-001'] = {
+          ...raw,
+          webhookUrl: raw.webhookUrl || null
+        };
+      } else {
+        state = raw;
+      }
+      console.log('💾 State loaded');
+    } else saveState();
+  } catch (e) { console.warn('Fresh start'); }
 
   try {
     if (fs.existsSync(AUDIT_FILE)) {
       auditLog = JSON.parse(fs.readFileSync(AUDIT_FILE, 'utf8'));
-      console.log(`🛡️  Audit log loaded (${auditLog.length} entries)`);
     }
-  } catch (e) {
-    console.warn('⚠️  Starting with empty audit log');
-    auditLog = [];
-  }
+  } catch (e) { auditLog = []; }
 }
 
 function saveState() {
@@ -66,58 +74,71 @@ function saveState() {
 function saveAudit() {
   const dir = path.dirname(AUDIT_FILE);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  // Keep last 2000 audit entries to prevent infinite growth
   if (auditLog.length > 2000) auditLog = auditLog.slice(0, 2000);
   fs.writeFileSync(AUDIT_FILE, JSON.stringify(auditLog, null, 2));
 }
 
-// ====================== AUDIT ENGINE ======================
-/**
- * Creates a rich, immutable-style audit entry
- * Logs BOTH successful and failed operations
- */
-function audit(action, options = {}) {
-  const {
-    success = true,
-    amount = null,
-    beforeBalance = state.availableBalance,
-    afterBalance = state.availableBalance,
-    reason = null,
-    actor = 'system',
-    ip = null,
-    userAgent = null,
-    reference = null,
-    extra = {},
-    errorMessage = null
-  } = options;
+function getMerchant(id) {
+  return state.merchants[id || state.defaultMerchant];
+}
 
+// ====================== WEBHOOK ======================
+function fireWebhook(merchant, event, payload) {
+  if (!merchant.webhookUrl) return;
+  const body = JSON.stringify({
+    event,
+    merchantId: merchant.merchantId,
+    timestamp: new Date().toISOString(),
+    data: payload
+  });
+  try {
+    const url = new URL(merchant.webhookUrl);
+    const req = http.request({
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      path: url.pathname + url.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+        'X-OPay-Simulator': 'true'
+      }
+    }, res => {
+      // fire and forget
+    });
+    req.on('error', () => {});
+    req.write(body);
+    req.end();
+  } catch (e) {}
+}
+
+// ====================== AUDIT ======================
+function audit(action, options = {}) {
   const entry = {
     id: uuidv4(),
     timestamp: new Date().toISOString(),
-    action,                    // e.g. 'TOPUP', 'TRANSFER', 'RESERVE', 'UNLIMITED_ON', 'BALANCE_QUERY'
-    success,
-    amount,
-    currency: state.currency,
-    beforeBalance,
-    afterBalance,
-    delta: afterBalance - beforeBalance,
-    reason,
-    actor,
-    ip,
-    userAgent,
-    reference: reference || uuidv4(),
-    merchantId: state.merchantId,
-    unlimitedModeAtTime: state.unlimitedMode,
-    errorMessage,
-    ...extra
+    action,
+    success: options.success !== false,
+    amount: options.amount ?? null,
+    currency: 'NGN',
+    beforeBalance: options.beforeBalance ?? null,
+    afterBalance: options.afterBalance ?? null,
+    delta: (options.afterBalance ?? 0) - (options.beforeBalance ?? 0),
+    reason: options.reason || null,
+    actor: options.actor || 'system',
+    ip: options.ip || null,
+    userAgent: options.userAgent || null,
+    reference: options.reference || uuidv4(),
+    merchantId: options.merchantId || state.defaultMerchant,
+    unlimitedModeAtTime: options.unlimitedModeAtTime ?? false,
+    errorMessage: options.errorMessage || null,
+    ...options.extra
   };
-
-  auditLog.unshift(entry); // newest first
+  auditLog.unshift(entry);
   saveAudit();
   return entry;
 }
 
-// Helper to extract request context
 function getRequestContext(req) {
   return {
     ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
@@ -126,201 +147,125 @@ function getRequestContext(req) {
   };
 }
 
-// ====================== CORE LOGIC ======================
-function getSafeToSpend() {
-  if (state.unlimitedMode) return 999999999999; // God mode
-  return Math.max(0, state.availableBalance - state.pendingBalance - state.reservedBalance);
+// ====================== CORE ======================
+function getSafeToSpend(m) {
+  if (m.unlimitedMode) return 999999999999;
+  return Math.max(0, m.availableBalance - m.pendingBalance - m.reservedBalance);
 }
 
-function addLedgerEntry(type, amount, meta = {}) {
+function addLedger(m, type, amount, meta = {}) {
   const entry = {
     id: uuidv4(),
     type,
     amount,
-    currency: state.currency,
-    beforeBalance: state.availableBalance,
-    afterBalance: state.availableBalance + (type === 'credit' || type === 'release' ? amount : -amount),
+    currency: m.currency,
+    beforeBalance: m.availableBalance,
+    afterBalance: m.availableBalance + (['credit', 'release'].includes(type) ? amount : -amount),
     meta,
     timestamp: new Date().toISOString()
   };
-  state.ledger.unshift(entry);
-  if (state.ledger.length > 500) state.ledger.pop();
+  m.ledger.unshift(entry);
+  if (m.ledger.length > 500) m.ledger.pop();
   return entry;
 }
 
 // ====================== ROUTES ======================
-
-// Health
 app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/api', (req, res) => {
   res.json({
     status: 'ONLINE',
-    service: 'OPay Wallet Simulator - Mad Scientist Edition',
-    version: '1.1.0',
-    features: ['Available Balance', 'Unlimited Mode', 'Ledger', 'Transaction Audit Logging'],
-    endpoints: [
-      'GET  /balance',
-      'GET  /balance/available',
-      'POST /topup',
-      'POST /transfer',
-      'POST /reserve',
-      'POST /release',
-      'GET  /ledger',
-      'GET  /audit',
-      'POST /unlimited',
-      'POST /reset'
-    ]
+    version: '1.2.0',
+    features: ['Frontend UI', 'Webhooks', 'Multi-Merchant', 'Audit Logging', 'Realistic Transfers'],
+    endpoints: ['/balance', '/transfer', '/topup', '/audit', '/webhook', '/merchants']
   });
 });
 
-// Full balance snapshot
+// Balance
 app.get('/balance', (req, res) => {
+  const m = getMerchant(req.query.merchantId);
   const ctx = getRequestContext(req);
-  audit('BALANCE_QUERY', {
-    success: true,
-    actor: ctx.actor,
-    ip: ctx.ip,
-    userAgent: ctx.userAgent,
-    extra: { queryType: 'full' }
-  });
+  audit('BALANCE_QUERY', { success: true, actor: ctx.actor, ip: ctx.ip, merchantId: m.merchantId, unlimitedModeAtTime: m.unlimitedMode });
 
   res.json({
     success: true,
     data: {
-      merchantId: state.merchantId,
-      merchantName: state.merchantName,
-      currency: state.currency,
-      availableBalance: state.availableBalance,
-      availableBalanceFormatted: `₦${(state.availableBalance / 100).toLocaleString()}`,
-      pendingBalance: state.pendingBalance,
-      reservedBalance: state.reservedBalance,
-      safeToSpend: getSafeToSpend(),
-      safeToSpendFormatted: `₦${(getSafeToSpend() / 100).toLocaleString()}`,
-      unlimitedMode: state.unlimitedMode,
-      lastUpdated: state.lastUpdated
+      merchantId: m.merchantId,
+      merchantName: m.merchantName,
+      currency: m.currency,
+      availableBalance: m.availableBalance,
+      availableBalanceFormatted: `₦${(m.availableBalance / 100).toLocaleString()}`,
+      pendingBalance: m.pendingBalance,
+      reservedBalance: m.reservedBalance,
+      safeToSpend: getSafeToSpend(m),
+      safeToSpendFormatted: `₦${(getSafeToSpend(m) / 100).toLocaleString()}`,
+      unlimitedMode: m.unlimitedMode,
+      lastUpdated: m.lastUpdated
     }
   });
 });
 
-// Quick available balance (OPay style)
 app.get('/balance/available', (req, res) => {
-  const ctx = getRequestContext(req);
-  audit('BALANCE_QUERY', {
-    success: true,
-    actor: ctx.actor,
-    ip: ctx.ip,
-    userAgent: ctx.userAgent,
-    extra: { queryType: 'available' }
-  });
-
+  const m = getMerchant(req.query.merchantId);
   res.json({
     code: '00000',
     message: 'SUCCESSFUL',
     data: {
-      usableAmount: state.unlimitedMode ? '999999999999' : String(state.availableBalance),
-      currency: state.currency,
+      usableAmount: m.unlimitedMode ? '999999999999' : String(m.availableBalance),
+      currency: m.currency,
       queryTime: new Date().toISOString()
     }
   });
 });
 
-// Top up (credit)
+// Top Up
 app.post('/topup', (req, res) => {
+  const m = getMerchant(req.body.merchantId);
   const ctx = getRequestContext(req);
   const amount = parseInt(req.body.amount) || 0;
-  const before = state.availableBalance;
+  const before = m.availableBalance;
 
   if (amount <= 0) {
-    audit('TOPUP', {
-      success: false,
-      amount,
-      beforeBalance: before,
-      afterBalance: before,
-      reason: req.body.reason || 'Top-up',
-      actor: ctx.actor,
-      ip: ctx.ip,
-      userAgent: ctx.userAgent,
-      errorMessage: 'Amount must be > 0'
-    });
+    audit('TOPUP', { success: false, amount, beforeBalance: before, afterBalance: before, actor: ctx.actor, ip: ctx.ip, errorMessage: 'Amount must be > 0', merchantId: m.merchantId });
     return res.status(400).json({ success: false, message: 'Amount must be > 0' });
   }
 
-  state.availableBalance += amount;
-  state.lastUpdated = new Date().toISOString();
-  const entry = addLedgerEntry('credit', amount, { reason: req.body.reason || 'Top-up', source: req.body.source || 'manual' });
+  m.availableBalance += amount;
+  m.lastUpdated = new Date().toISOString();
+  const entry = addLedger(m, 'credit', amount, { reason: req.body.reason || 'Top-up' });
   saveState();
 
-  audit('TOPUP', {
-    success: true,
-    amount,
-    beforeBalance: before,
-    afterBalance: state.availableBalance,
-    reason: req.body.reason || 'Top-up',
-    actor: ctx.actor,
-    ip: ctx.ip,
-    userAgent: ctx.userAgent,
-    reference: entry.id,
-    extra: { source: req.body.source || 'manual' }
-  });
+  audit('TOPUP', { success: true, amount, beforeBalance: before, afterBalance: m.availableBalance, reason: req.body.reason, actor: ctx.actor, ip: ctx.ip, merchantId: m.merchantId, unlimitedModeAtTime: m.unlimitedMode });
+  fireWebhook(m, 'topup.success', { amount, newBalance: m.availableBalance, entry });
 
-  res.json({
-    success: true,
-    message: `Credited ₦${(amount / 100).toLocaleString()}`,
-    data: {
-      newAvailable: state.availableBalance,
-      entry
-    }
-  });
+  res.json({ success: true, message: `Credited ₦${(amount / 100).toLocaleString()}`, data: { newAvailable: m.availableBalance, entry } });
 });
 
-// Transfer / Debit
+// Transfer (feels normal)
 app.post('/transfer', (req, res) => {
+  const m = getMerchant(req.body.merchantId);
   const ctx = getRequestContext(req);
   const amount = parseInt(req.body.amount) || 0;
-  const safe = getSafeToSpend();
-  const before = state.availableBalance;
-  const reference = req.body.reference || uuidv4();
+  const safe = getSafeToSpend(m);
+  const before = m.availableBalance;
+  const reference = req.body.reference || `TRF-${Date.now()}`;
 
   if (amount <= 0) {
-    audit('TRANSFER', {
-      success: false,
-      amount,
-      beforeBalance: before,
-      afterBalance: before,
-      reason: req.body.reason || 'Transfer',
-      actor: ctx.actor,
-      ip: ctx.ip,
-      userAgent: ctx.userAgent,
-      reference,
-      errorMessage: 'Amount must be > 0'
-    });
+    audit('TRANSFER', { success: false, amount, beforeBalance: before, afterBalance: before, actor: ctx.actor, ip: ctx.ip, reference, errorMessage: 'Amount must be > 0', merchantId: m.merchantId });
     return res.status(400).json({ success: false, message: 'Amount must be > 0' });
   }
 
-  if (!state.unlimitedMode && amount > safe) {
-    audit('TRANSFER', {
-      success: false,
-      amount,
-      beforeBalance: before,
-      afterBalance: before,
-      reason: req.body.reason || 'Transfer',
-      actor: ctx.actor,
-      ip: ctx.ip,
-      userAgent: ctx.userAgent,
-      reference,
-      errorMessage: 'Insufficient available balance',
-      extra: { available: safe, requested: amount }
-    });
-    return res.status(400).json({
-      success: false,
-      message: 'Insufficient available balance',
-      available: safe,
-      requested: amount
-    });
+  if (!m.unlimitedMode && amount > safe) {
+    audit('TRANSFER', { success: false, amount, beforeBalance: before, afterBalance: before, actor: ctx.actor, ip: ctx.ip, reference, errorMessage: 'Insufficient available balance', merchantId: m.merchantId });
+    fireWebhook(m, 'transfer.failed', { amount, reason: 'Insufficient balance' });
+    return res.status(400).json({ success: false, message: 'Insufficient available balance', available: safe, requested: amount });
   }
 
-  if (!state.unlimitedMode) state.availableBalance -= amount;
-  state.lastUpdated = new Date().toISOString();
-  const entry = addLedgerEntry('debit', amount, {
+  if (!m.unlimitedMode) m.availableBalance -= amount;
+  m.lastUpdated = new Date().toISOString();
+  const entry = addLedger(m, 'debit', amount, {
     reason: req.body.reason || 'Transfer',
     recipient: req.body.recipient || 'unknown',
     reference
@@ -328,195 +273,110 @@ app.post('/transfer', (req, res) => {
   saveState();
 
   audit('TRANSFER', {
-    success: true,
-    amount,
-    beforeBalance: before,
-    afterBalance: state.availableBalance,
-    reason: req.body.reason || 'Transfer',
-    actor: ctx.actor,
-    ip: ctx.ip,
-    userAgent: ctx.userAgent,
-    reference,
+    success: true, amount, beforeBalance: before, afterBalance: m.availableBalance,
+    reason: req.body.reason, actor: ctx.actor, ip: ctx.ip, reference,
+    merchantId: m.merchantId, unlimitedModeAtTime: m.unlimitedMode,
     extra: { recipient: req.body.recipient || 'unknown' }
+  });
+
+  fireWebhook(m, 'transfer.success', {
+    amount,
+    recipient: req.body.recipient,
+    reference,
+    newBalance: m.availableBalance,
+    entry
   });
 
   res.json({
     success: true,
-    message: `Debited ₦${(amount / 100).toLocaleString()}`,
+    message: `Transfer of ₦${(amount / 100).toLocaleString()} successful`,
     data: {
-      newAvailable: state.availableBalance,
+      reference,
+      newAvailable: m.availableBalance,
+      newAvailableFormatted: `₦${(m.availableBalance / 100).toLocaleString()}`,
       entry
     }
   });
 });
 
-// Reserve funds
-app.post('/reserve', (req, res) => {
-  const ctx = getRequestContext(req);
-  const amount = parseInt(req.body.amount) || 0;
-  const safe = getSafeToSpend();
-  const before = state.availableBalance;
-
-  if (amount <= 0 || (!state.unlimitedMode && amount > safe)) {
-    audit('RESERVE', {
-      success: false,
-      amount,
-      beforeBalance: before,
-      afterBalance: before,
-      reason: req.body.reason || 'Order reservation',
-      actor: ctx.actor,
-      ip: ctx.ip,
-      userAgent: ctx.userAgent,
-      errorMessage: 'Cannot reserve that amount'
-    });
-    return res.status(400).json({ success: false, message: 'Cannot reserve that amount' });
-  }
-
-  state.reservedBalance += amount;
-  if (!state.unlimitedMode) state.availableBalance -= amount;
-  state.lastUpdated = new Date().toISOString();
-  addLedgerEntry('reserve', amount, { reason: req.body.reason || 'Order reservation' });
+// Webhook management
+app.post('/webhook', (req, res) => {
+  const m = getMerchant(req.body.merchantId);
+  m.webhookUrl = req.body.url || null;
   saveState();
-
-  audit('RESERVE', {
-    success: true,
-    amount,
-    beforeBalance: before,
-    afterBalance: state.availableBalance,
-    reason: req.body.reason || 'Order reservation',
-    actor: ctx.actor,
-    ip: ctx.ip,
-    userAgent: ctx.userAgent
-  });
-
-  res.json({ success: true, reserved: state.reservedBalance });
+  res.json({ success: true, message: m.webhookUrl ? `Webhook set to ${m.webhookUrl}` : 'Webhook cleared', webhookUrl: m.webhookUrl });
 });
 
-// Release reserved
-app.post('/release', (req, res) => {
-  const ctx = getRequestContext(req);
-  const amount = parseInt(req.body.amount) || state.reservedBalance;
-  const release = Math.min(amount, state.reservedBalance);
-  const before = state.availableBalance;
-
-  state.reservedBalance -= release;
-  state.availableBalance += release;
-  state.lastUpdated = new Date().toISOString();
-  addLedgerEntry('release', release, { reason: 'Reservation released' });
-  saveState();
-
-  audit('RELEASE', {
-    success: true,
-    amount: release,
-    beforeBalance: before,
-    afterBalance: state.availableBalance,
-    reason: 'Reservation released',
-    actor: ctx.actor,
-    ip: ctx.ip,
-    userAgent: ctx.userAgent
-  });
-
-  res.json({ success: true, released: release, available: state.availableBalance });
+app.get('/webhook', (req, res) => {
+  const m = getMerchant(req.query.merchantId);
+  res.json({ success: true, webhookUrl: m.webhookUrl });
 });
 
-// Ledger (business transactions)
-app.get('/ledger', (req, res) => {
-  const limit = parseInt(req.query.limit) || 50;
+// Unlimited
+app.post('/unlimited', (req, res) => {
+  const m = getMerchant(req.body.merchantId);
+  const ctx = getRequestContext(req);
+  m.unlimitedMode = req.body.enabled !== false;
+  m.lastUpdated = new Date().toISOString();
+  saveState();
+  audit(m.unlimitedMode ? 'UNLIMITED_ON' : 'UNLIMITED_OFF', { success: true, actor: ctx.actor, ip: ctx.ip, merchantId: m.merchantId });
   res.json({
     success: true,
-    count: state.ledger.length,
-    data: state.ledger.slice(0, limit)
+    unlimitedMode: m.unlimitedMode,
+    message: m.unlimitedMode ? '🔥 UNLIMITED MODE ON' : 'Unlimited mode OFF'
   });
 });
 
-// 🛡️ AUDIT TRAIL (full accountability)
+// Ledger & Audit
+app.get('/ledger', (req, res) => {
+  const m = getMerchant(req.query.merchantId);
+  const limit = parseInt(req.query.limit) || 50;
+  res.json({ success: true, count: m.ledger.length, data: m.ledger.slice(0, limit) });
+});
+
 app.get('/audit', (req, res) => {
   const limit = parseInt(req.query.limit) || 100;
-  const action = req.query.action; // optional filter
-  const successOnly = req.query.success === 'true';
-  const failedOnly = req.query.success === 'false';
-
   let filtered = auditLog;
-
-  if (action) {
-    filtered = filtered.filter(e => e.action === action.toUpperCase());
-  }
-  if (successOnly) {
-    filtered = filtered.filter(e => e.success === true);
-  }
-  if (failedOnly) {
-    filtered = filtered.filter(e => e.success === false);
-  }
-
-  res.json({
-    success: true,
-    totalAuditEntries: auditLog.length,
-    returned: Math.min(limit, filtered.length),
-    data: filtered.slice(0, limit)
-  });
+  if (req.query.action) filtered = filtered.filter(e => e.action === req.query.action.toUpperCase());
+  if (req.query.success === 'true') filtered = filtered.filter(e => e.success);
+  if (req.query.success === 'false') filtered = filtered.filter(e => !e.success);
+  res.json({ success: true, totalAuditEntries: auditLog.length, returned: Math.min(limit, filtered.length), data: filtered.slice(0, limit) });
 });
 
-// Toggle Unlimited Mode
-app.post('/unlimited', (req, res) => {
-  const ctx = getRequestContext(req);
-  const enabled = req.body.enabled !== false;
-  const before = state.unlimitedMode;
-
-  state.unlimitedMode = enabled;
-  state.lastUpdated = new Date().toISOString();
-  saveState();
-
-  audit(enabled ? 'UNLIMITED_ON' : 'UNLIMITED_OFF', {
-    success: true,
-    beforeBalance: state.availableBalance,
-    afterBalance: state.availableBalance,
-    actor: ctx.actor,
-    ip: ctx.ip,
-    userAgent: ctx.userAgent,
-    extra: { previousState: before, newState: enabled }
-  });
-
-  res.json({
-    success: true,
-    unlimitedMode: state.unlimitedMode,
-    message: state.unlimitedMode
-      ? '🔥 UNLIMITED MODE ACTIVATED — Balance is now infinite'
-      : 'Unlimited mode deactivated. Back to reality.'
-  });
-});
-
-// Nuclear reset
+// Reset
 app.post('/reset', (req, res) => {
+  const m = getMerchant(req.body.merchantId);
   const ctx = getRequestContext(req);
-  const before = state.availableBalance;
-
-  state.availableBalance = 15000000;
-  state.pendingBalance = 0;
-  state.reservedBalance = 0;
-  state.unlimitedMode = false;
-  state.ledger = [];
-  state.lastUpdated = new Date().toISOString();
+  const before = m.availableBalance;
+  m.availableBalance = 15000000;
+  m.pendingBalance = 0;
+  m.reservedBalance = 0;
+  m.unlimitedMode = false;
+  m.ledger = [];
+  m.lastUpdated = new Date().toISOString();
   saveState();
+  audit('RESET', { success: true, beforeBalance: before, afterBalance: m.availableBalance, actor: ctx.actor, ip: ctx.ip, merchantId: m.merchantId });
+  res.json({ success: true, message: 'Reset to ₦150,000' });
+});
 
-  audit('RESET', {
+// Multi-merchant list
+app.get('/merchants', (req, res) => {
+  res.json({
     success: true,
-    beforeBalance: before,
-    afterBalance: state.availableBalance,
-    reason: 'Nuclear reset to default',
-    actor: ctx.actor,
-    ip: ctx.ip,
-    userAgent: ctx.userAgent
+    data: Object.values(state.merchants).map(m => ({
+      merchantId: m.merchantId,
+      merchantName: m.merchantName,
+      availableBalanceFormatted: `₦${(m.availableBalance / 100).toLocaleString()}`,
+      unlimitedMode: m.unlimitedMode
+    }))
   });
-
-  res.json({ success: true, message: 'Wallet reset to default ₦150,000' });
 });
 
 // Start
 loadState();
 app.listen(PORT, () => {
-  console.log(`\n💚 OPay Wallet Simulator LIVE on http://localhost:${PORT}`);
-  console.log(`   Available Balance: ₦${(state.availableBalance / 100).toLocaleString()}`);
-  console.log(`   Unlimited Mode: ${state.unlimitedMode ? 'ON 🔥' : 'OFF'}`);
-  console.log(`   Audit Log Entries: ${auditLog.length}`);
-  console.log(`   Ready to break limits + full accountability.\n`);
+  console.log(`\n💚 OPay Wallet Simulator v1.2 LIVE`);
+  console.log(`   Frontend UI  → http://localhost:${PORT}`);
+  console.log(`   API          → http://localhost:${PORT}/api`);
+  console.log(`   Ready for real transfers + webhooks + multi-merchant\n`);
 });

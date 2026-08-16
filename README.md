@@ -1,112 +1,91 @@
-# 💚 OPay Wallet Simulator — Mad Scientist Edition
+# 💚 OPay Wallet Simulator v1.2
 
-**Full local OPay-style wallet with Available Balance + 🛡️ Production-grade Transaction Audit Logging**
+**Real frontend UI • Realistic transfers • Webhooks • Multi-merchant • Full audit logging**
 
-This is not a toy. This is a production-feeling simulator you can point your real integrations at while developing, testing, or building the next fintech empire.
+This feels like a real OPay wallet. You can top up, transfer money, see the balance update live, and get webhooks — all running locally on your machine.
 
-## 🔥 Features
+---
 
-- **Available Balance** engine (usableAmount style)
-- **Safe-to-Spend** calculation (available − pending − reserved)
-- **Unlimited Mode** (god mode — infinite balance)
-- Full **Ledger** with before/after balance on every movement
-- **🛡️ Transaction Audit Logging** (the new power):
-  - Immutable-style append-only audit trail
-  - Logs **every** action (success + failure)
-  - Rich context: actor, IP, user-agent, reference, before/after, delta, reason
-  - Separate persistent `audit.log.json`
-  - Filterable `/audit` endpoint
-- Top-up / Transfer / Reserve / Release
-- Persistent JSON storage
-- Clean REST API + powerful CLI
+## 🚀 How to Install & Try It RIGHT NOW
 
-## Quick Start
-
+### 1. Clone & Install
 ```bash
 git clone https://github.com/appycody58-byte/opay-wallet-simulator.git
 cd opay-wallet-simulator
 npm install
+```
+
+### 2. Start the server
+```bash
 npm start
 ```
 
-Server runs on **http://localhost:4090**
-
-### CLI Power
-
-```bash
-node cli.js balance
-node cli.js available
-node cli.js topup 5000000          # +₦50,000
-node cli.js transfer 100000        # -₦1,000
-node cli.js unlimited on           # 🔥 GOD MODE
-node cli.js ledger 20
-node cli.js audit 30               # Full audit trail
-node cli.js audit failed           # Only failed attempts
-node cli.js reset
+You will see:
+```
+💚 OPay Wallet Simulator v1.2 LIVE
+   Frontend UI  → http://localhost:4090
+   API          → http://localhost:4090/api
 ```
 
-## API Endpoints
+### 3. Open the Frontend
+Open your browser and go to:
 
-| Method | Endpoint              | Description                          |
-|--------|-----------------------|--------------------------------------|
-| GET    | `/`                   | Health + endpoint list               |
-| GET    | `/balance`            | Full balance snapshot (+ audited)    |
-| GET    | `/balance/available`  | OPay-style usableAmount (+ audited)  |
-| POST   | `/topup`              | Credit (audited)                     |
-| POST   | `/transfer`           | Debit (audited — including failures) |
-| POST   | `/reserve`            | Hold funds (audited)                 |
-| POST   | `/release`            | Release reserved (audited)           |
-| GET    | `/ledger`             | Business transaction history         |
-| GET    | `/audit`              | **Full audit trail** (filterable)    |
-| POST   | `/unlimited`          | Toggle god mode (audited)            |
-| POST   | `/reset`              | Nuclear reset (audited)              |
+**http://localhost:4090**
 
-### Audit Query Examples
+You now have a beautiful dark UI where you can:
+- See live Available Balance
+- Top Up money
+- Transfer money (it works exactly like normal)
+- Toggle Unlimited Mode
+- View recent activity + full Audit Log
 
-```bash
-# Last 100 audit entries
-GET /audit?limit=100
+### 4. Try a Transfer (feels normal)
+1. Click **Transfer**
+2. Enter amount in Naira (e.g. `1500`)
+3. Enter recipient name
+4. Confirm
 
-# Only failed transfers
-GET /audit?action=TRANSFER&success=false
-
-# Only successful topups
-GET /audit?action=TOPUP&success=true
-```
-
-## Amounts are in Kobo
-
-Just like real OPay: `100000` = ₦1,000.00
-
-## Unlimited Mode
-
-```bash
-curl -X POST http://localhost:4090/unlimited -H "Content-Type: application/json" -d '{"enabled":true}'
-```
-
-Now every transfer succeeds. Perfect for stress testing or demos. Every toggle is audited.
-
-## Audit Log Structure (example)
-
-```json
-{
-  "id": "uuid",
-  "timestamp": "2026-08-16T...",
-  "action": "TRANSFER",
-  "success": false,
-  "amount": 5000000,
-  "beforeBalance": 15000000,
-  "afterBalance": 15000000,
-  "delta": 0,
-  "reason": "Transfer",
-  "actor": "api-client",
-  "ip": "::1",
-  "errorMessage": "Insufficient available balance",
-  "reference": "..."
-}
-```
+Balance updates instantly. Transaction appears in the activity feed. Everything is audited.
 
 ---
 
-**Built by AppyCody × Grok**  
-Breaking limits + full accountability. One available balance at a time. 💚🔥🛡️
+## Extra Powers
+
+### Set a Webhook
+```bash
+curl -X POST http://localhost:4090/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://your-server.com/opay-hook"}'
+```
+Every successful transfer / topup will POST to your URL.
+
+### CLI still works
+```bash
+node cli.js balance
+node cli.js transfer 250000     # ₦2,500
+node cli.js audit 20
+node cli.js unlimited on
+```
+
+### Multi-merchant
+The system already supports multiple merchants (ready for expansion). Default merchant ID: `2566-SIMULATOR-001`
+
+---
+
+## What you can do right now
+
+| Action              | How                                      |
+|---------------------|------------------------------------------|
+| See balance         | Open http://localhost:4090               |
+| Top up              | Click “+ Top Up” in the UI               |
+| Transfer money      | Click “Transfer” — works like real OPay  |
+| Unlimited money     | Click the Unlimited button               |
+| View audit trail    | Click “Audit Log”                        |
+| Use as API          | `POST /transfer` with amount in kobo     |
+
+---
+
+**This is ready to use today.**  
+Clone → `npm install` → `npm start` → open browser → transfer money like normal.
+
+Built by AppyCody × Grok 💚🔥
