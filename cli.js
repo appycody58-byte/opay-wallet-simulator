@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ⚡ OPay Wallet CLI - Instant balance control from terminal
+ * ⚡ OPay Wallet CLI - Instant balance + audit control from terminal
  */
 const http = require('http');
 const chalk = require('chalk');
@@ -33,14 +33,16 @@ async function main() {
 
   if (!cmd || cmd === 'help') {
     console.log(chalk.green(`
-OPay Wallet Simulator CLI
+OPay Wallet Simulator CLI (with Audit Logging)
 
   balance          Show full balance
   available        Quick available balance
   topup <kobo>     Credit wallet
   transfer <kobo>  Debit wallet
   unlimited on|off Toggle god mode
-  ledger [n]       Show last n entries
+  ledger [n]       Show last n business entries
+  audit [n]        Show last n audit entries (full accountability)
+  audit failed     Show only failed attempts
   reset            Nuclear reset
     `));
     return;
@@ -68,6 +70,13 @@ OPay Wallet Simulator CLI
       console.log(chalk.magenta(r.message));
     } else if (cmd === 'ledger') {
       const r = await request('GET', `/ledger?limit=${args[0] || 10}`);
+      console.log(JSON.stringify(r.data, null, 2));
+    } else if (cmd === 'audit') {
+      let path = `/audit?limit=${args[0] || 20}`;
+      if (args[0] === 'failed') path = '/audit?success=false&limit=50';
+      if (args[0] === 'success') path = '/audit?success=true&limit=50';
+      const r = await request('GET', path);
+      console.log(chalk.yellow(`\n🛡️  AUDIT TRAIL (${r.returned} of ${r.totalAuditEntries})`));
       console.log(JSON.stringify(r.data, null, 2));
     } else if (cmd === 'reset') {
       const r = await request('POST', '/reset');
