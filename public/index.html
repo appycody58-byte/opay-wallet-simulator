@@ -7,232 +7,731 @@
   <style>
     :root {
       --green: #00b14f;
-      --dark: #0f172a;
-      --card: #1e293b;
-      --text: #f1f5f9;
-      --muted: #94a3b8;
+      --dark-bg: #1a1a1e;
+      --card-bg: #2d2d35;
+      --text-primary: #ffffff;
+      --text-secondary: #999999;
+      --success-green: #1abc9c;
+      --warning-red: #e74c3c;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+    }
+    
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      color: var(--text);
+      background: var(--dark-bg);
+      color: var(--text-primary);
       min-height: 100vh;
-      padding: 20px;
+      padding: 0;
+      overflow-x: hidden;
     }
-    .container { max-width: 480px; margin: 0 auto; }
-    .header { text-align: center; margin-bottom: 24px; }
-    .header h1 { font-size: 1.8rem; color: var(--green); margin-bottom: 4px; }
-    .header p { color: var(--muted); font-size: 0.9rem; }
-    .card {
-      background: var(--card);
-      border-radius: 16px;
-      padding: 24px;
-      margin-bottom: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    }
-    .balance-label { color: var(--muted); font-size: 0.85rem; margin-bottom: 6px; }
-    .balance-amount {
-      font-size: 2.5rem;
-      font-weight: 700;
-      color: var(--green);
-      letter-spacing: -1px;
-    }
-    .safe { font-size: 0.95rem; color: var(--muted); margin-top: 8px; }
-    .badge {
-      display: inline-block;
-      background: #22c55e33;
-      color: #4ade80;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      margin-top: 10px;
-    }
-    .badge.off { background: #ef444433; color: #f87171; }
-    .actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-top: 20px;
-    }
-    button {
-      background: var(--green);
-      color: white;
-      border: none;
-      padding: 14px;
-      border-radius: 12px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    button:hover { transform: translateY(-2px); opacity: 0.95; }
-    button.secondary { background: #334155; }
-    button.danger { background: #ef4444; }
-    input, select {
+
+    .mobile-frame {
       width: 100%;
-      padding: 14px;
-      border-radius: 12px;
-      border: 1px solid #334155;
-      background: #0f172a;
+      max-width: 390px;
+      height: 100vh;
+      margin: 0 auto;
+      background: var(--dark-bg);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      background: var(--dark-bg);
+      padding: 8px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-primary);
+      border-bottom: 1px solid #333;
+    }
+
+    /* Header */
+    .header {
+      background: var(--dark-bg);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+
+    .header-logo {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .header-icons {
+      display: flex;
+      gap: 12px;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: #333;
+      border: none;
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: 0.2s;
+    }
+
+    /* Main Content */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: 80px;
+    }
+
+    /* Security Badge - Green Gradient */
+    .security-badge {
+      margin: 16px;
+      padding: 20px;
+      background: linear-gradient(135deg, var(--green) 0%, #00d65f 100%);
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .security-badge::before {
+      content: '🛡️';
+      position: absolute;
+      font-size: 80px;
+      opacity: 0.1;
+      right: -20px;
+      top: -20px;
+    }
+
+    .security-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .security-title {
+      font-size: 13px;
+      color: rgba(255,255,255,0.9);
+      font-weight: 600;
+    }
+
+    .security-eye {
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .balance-display {
+      font-size: 36px;
+      font-weight: 700;
       color: white;
-      font-size: 1rem;
+      margin: 12px 0;
+    }
+
+    .balance-subtitle {
+      font-size: 11px;
+      color: rgba(255,255,255,0.7);
+    }
+
+    .btn-add-money {
+      width: 100%;
+      padding: 12px;
+      background: #000;
+      color: var(--green);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      margin-top: 16px;
+      transition: 0.2s;
+    }
+
+    .btn-add-money:hover {
+      background: rgba(0,0,0,0.8);
+    }
+
+    /* Quick Action Card */
+    .quick-action {
+      margin: 16px;
+      padding: 16px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .quick-action:hover {
+      background: #353d47;
+    }
+
+    .action-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--green) 0%, #00d65f 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .action-content {
+      flex: 1;
+    }
+
+    .action-name {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .action-amount {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Notification Banner */
+    .notification-banner {
+      margin: 16px;
+      padding: 16px;
+      background: #ff6b6b33;
+      border-radius: 12px;
+      border-left: 4px solid #ff6b6b;
+    }
+
+    .notification-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ff6b6b;
+      margin-bottom: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .notification-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
       margin-bottom: 12px;
     }
-    label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 0.85rem; }
-    .log { max-height: 300px; overflow-y: auto; font-size: 0.85rem; }
-    .log-item {
-      padding: 12px 0;
-      border-bottom: 1px solid #334155;
+
+    .notification-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
-    .log-item.success { border-left: 3px solid var(--green); padding-left: 10px; }
-    .log-item.fail { border-left: 3px solid #ef4444; padding-left: 10px; }
+
+    .btn-notification {
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .btn-notification.primary {
+      background: #ff6b6b;
+      color: white;
+    }
+
+    .btn-notification.secondary {
+      background: transparent;
+      color: #ff6b6b;
+      border: 1px solid #ff6b6b;
+    }
+
+    /* Transaction History */
+    .transaction-header {
+      padding: 16px;
+      border-bottom: 1px solid #333;
+    }
+
+    .transaction-header-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .transaction-item {
+      padding: 16px;
+      border-bottom: 1px solid #333;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .transaction-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .transaction-details {
+      flex: 1;
+    }
+
+    .transaction-name {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .transaction-time {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .transaction-amount {
+      text-align: right;
+    }
+
+    .amount {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .status-badge {
+      font-size: 10px;
+      padding: 4px 8px;
+      background: rgba(26, 188, 156, 0.2);
+      color: var(--success-green);
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 390px;
+      background: var(--card-bg);
+      border-top: 1px solid #333;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      height: 70px;
+      padding: 8px 0;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: 0.2s;
+      color: var(--text-secondary);
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+    }
+
+    .nav-item.active {
+      color: var(--green);
+    }
+
+    .nav-icon {
+      font-size: 24px;
+    }
+
+    .nav-label {
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    /* Modals */
     .modal {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.75);
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      padding: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      align-items: flex-end;
+      max-width: 390px;
+      margin: 0 auto;
+      left: 50%;
+      transform: translateX(-50%);
     }
-    .modal.active { display: flex; }
-    .modal-content {
-      background: var(--card);
-      padding: 24px;
-      border-radius: 16px;
-      width: 100%;
-      max-width: 400px;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-    .receipt {
-      text-align: center;
-      padding: 10px 0;
-    }
-    .receipt .amount {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--green);
-      margin: 12px 0;
-    }
-    .receipt-row {
+
+    .modal.active {
       display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px dashed #334155;
-      font-size: 0.9rem;
     }
-    .status { text-align: center; color: var(--muted); font-size: 0.8rem; margin-top: 16px; }
+
+    .modal-content {
+      width: 100%;
+      background: var(--card-bg);
+      border-radius: 20px 20px 0 0;
+      padding: 24px 16px;
+      max-height: 80vh;
+      overflow-y: auto;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-header {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      padding: 12px;
+      background: var(--dark-bg);
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .form-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .btn-modal {
+      width: 100%;
+      padding: 14px;
+      background: var(--green);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: 0.2s;
+    }
+
+    .btn-modal.secondary {
+      background: #333;
+      color: var(--text-primary);
+    }
+
+    /* PIN Modal */
     .pin-dots {
       display: flex;
       justify-content: center;
       gap: 12px;
-      margin: 20px 0;
+      margin: 24px 0;
     }
+
     .pin-dot {
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      background: #334155;
+      background: #444;
+      transition: 0.2s;
     }
-    .pin-dot.filled { background: var(--green); }
+
+    .pin-dot.filled {
+      background: var(--green);
+    }
+
+    .pin-input {
+      font-size: 18px;
+      text-align: center;
+      letter-spacing: 8px;
+    }
+
+    /* Receipt */
+    .receipt {
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .receipt-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .receipt-status {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--success-green);
+      margin-bottom: 8px;
+    }
+
+    .receipt-amount {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--green);
+      margin: 16px 0;
+    }
+
+    .receipt-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px dashed #444;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .receipt-row span:last-child {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-secondary);
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>💚 OPay Simulator</h1>
-      <p>Local Wallet • PIN • Banks • Receipts</p>
-    </div>
-
-    <div class="card">
-      <div class="balance-label">Available Balance</div>
-      <div class="balance-amount" id="balance">₦0.00</div>
-      <div class="safe" id="safe">Safe to spend: ₦0.00</div>
-      <div id="badge" class="badge">Loading...</div>
-
-      <div class="actions">
-        <button onclick="openModal('topup')">+ Top Up</button>
-        <button onclick="openModal('transfer')" class="secondary">Transfer</button>
-        <button onclick="toggleUnlimited()" id="unlimitedBtn">Unlimited OFF</button>
-        <button onclick="loadAudit()" class="secondary">Audit Log</button>
+  <div class="mobile-frame">
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div style="display: flex; gap: 4px; align-items: center;">
+        <span>📡 LTE</span>
+        <span>5.1/5 🔋46%</span>
       </div>
     </div>
 
-    <div class="card">
-      <h3 style="margin-bottom:12px">Recent Activity</h3>
-      <div class="log" id="log">Loading...</div>
+    <!-- Header -->
+    <div class="header">
+      <div class="header-logo">💚 OPay</div>
+      <div class="header-icons">
+        <button class="icon-btn">🔔</button>
+        <button class="icon-btn">⚙️</button>
+        <button class="icon-btn">⋯</button>
+      </div>
     </div>
 
-    <div class="status" id="status">Connected • PIN protected</div>
-  </div>
+    <!-- Main Content -->
+    <div class="content">
+      <!-- Security Badge -->
+      <div class="security-badge">
+        <div class="security-header">
+          <div>
+            <div class="security-title">Click for Security</div>
+            <div class="balance-subtitle">Available Balance</div>
+          </div>
+          <div class="security-eye">👁️</div>
+        </div>
+        <div class="balance-display" id="balance">₦200.00</div>
+        <button class="btn-add-money" onclick="openModal('topup')">+ Add Money</button>
+      </div>
 
-  <!-- Generic Modal -->
-  <div class="modal" id="modal">
-    <div class="modal-content">
-      <h3 id="modalTitle" style="margin-bottom:16px">Action</h3>
-      <div id="modalBody"></div>
-      <div style="display:flex;gap:10px;margin-top:16px" id="modalButtons">
-        <button onclick="closeModal()" class="secondary" style="flex:1">Cancel</button>
-        <button onclick="submitModal()" style="flex:1" id="modalSubmit">Confirm</button>
+      <!-- Quick Action -->
+      <div class="quick-action">
+        <div class="action-icon">💰</div>
+        <div class="action-content">
+          <div class="action-name">BizPayment: today received</div>
+          <div class="action-amount">₦0.00</div>
+        </div>
+        <span style="font-size: 18px;">›</span>
+      </div>
+
+      <!-- Notification -->
+      <div class="notification-banner">
+        <div class="notification-title">⚠️ Watermark & Pop-up Notice</div>
+        <div class="notification-text">The watermark pop-up will disappear automatically after you subscribe to any plan.</div>
+        <div class="notification-buttons">
+          <button class="btn-notification primary">👑 Click here to Subscribe</button>
+          <button class="btn-notification secondary">✈️ Join Telegram Channel</button>
+        </div>
+      </div>
+
+      <!-- Transactions -->
+      <div class="transaction-header">
+        <div class="transaction-header-title">Recent Transfers</div>
+      </div>
+
+      <div id="transactions-list">
+        <div class="transaction-item">
+          <div class="transaction-icon">↑</div>
+          <div class="transaction-details">
+            <div class="transaction-name">Transfer to JOSHUA OGEDEGBE</div>
+            <div class="transaction-time">Aug 19th, 20:30:05</div>
+          </div>
+          <div class="transaction-amount">
+            <div class="amount">-₦500.00</div>
+            <div class="status-badge">Successful</div>
+          </div>
+        </div>
+
+        <div class="transaction-item">
+          <div class="transaction-icon">↑</div>
+          <div class="transaction-details">
+            <div class="transaction-name">Transfer to JOSHUA OGEDEGBE</div>
+            <div class="transaction-time">Aug 19th, 20:25:05</div>
+          </div>
+          <div class="transaction-amount">
+            <div class="amount">-₦2,000.00</div>
+            <div class="status-badge">Successful</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+      <div class="nav-item active">
+        <div class="nav-icon">🏠</div>
+        <div class="nav-label">Home</div>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">❤️</div>
+        <div class="nav-label">Rewards</div>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">📊</div>
+        <div class="nav-label">Finance</div>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">💳</div>
+        <div class="nav-label">Cards</div>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">👤</div>
+        <div class="nav-label">Me</div>
       </div>
     </div>
   </div>
 
   <!-- PIN Modal -->
   <div class="modal" id="pinModal">
-    <div class="modal-content" style="text-align:center">
-      <h3>Enter PIN</h3>
-      <p style="color:#94a3b8;margin:8px 0 0">Default PIN is <strong>1234</strong></p>
-      <div class="pin-dots" id="pinDots">
-        <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    <div class="modal-content" style="min-height: 300px;">
+      <div class="modal-header">Enter PIN</div>
+      <div style="text-align: center;">
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
+          Default PIN is <strong style="color: var(--text-primary);">1234</strong>
+        </p>
+        <div class="pin-dots" id="pinDots">
+          <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+        </div>
+        <input type="password" id="pinInput" class="form-input pin-input" maxlength="4" inputmode="numeric" placeholder="••••" />
+        <button class="btn-modal" onclick="verifyPin()">Unlock</button>
+        <button class="btn-modal secondary" onclick="closePinModal()">Cancel</button>
       </div>
-      <input type="password" id="pinInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" 
-             style="text-align:center;font-size:1.4rem;letter-spacing:8px" placeholder="••••" />
-      <div style="display:flex;gap:10px;margin-top:16px">
-        <button onclick="closePinModal()" class="secondary" style="flex:1">Cancel</button>
-        <button onclick="verifyPin()" style="flex:1">Unlock</button>
+    </div>
+  </div>
+
+  <!-- Top Up Modal -->
+  <div class="modal" id="topupModal">
+    <div class="modal-content">
+      <div class="modal-header">Add Money</div>
+      <div class="form-group">
+        <label class="form-label">Amount (₦)</label>
+        <input type="number" id="topupAmount" class="form-input" placeholder="Enter amount" min="1" />
       </div>
+      <div class="form-group">
+        <label class="form-label">Reason (optional)</label>
+        <input type="text" id="topupReason" class="form-input" placeholder="e.g., Salary, Gift" />
+      </div>
+      <button class="btn-modal" onclick="submitTopup()">Add Money</button>
+      <button class="btn-modal secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Transfer Modal -->
+  <div class="modal" id="transferModal">
+    <div class="modal-content">
+      <div class="modal-header">Transfer Money</div>
+      <div class="form-group">
+        <label class="form-label">Amount (₦)</label>
+        <input type="number" id="transferAmount" class="form-input" placeholder="Enter amount" min="1" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bank</label>
+        <select id="transferBank" class="form-select">
+          <option>Access Bank</option><option>Zenith Bank</option><option>GTBank</option><option>First Bank</option>
+          <option>UBA</option><option>Fidelity Bank</option><option>OPay</option><option>Kuda</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Account Number / Phone</label>
+        <input type="text" id="transferAccount" class="form-input" placeholder="0123456789" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Recipient Name</label>
+        <input type="text" id="transferRecipient" class="form-input" placeholder="John Doe" />
+      </div>
+      <button class="btn-modal" onclick="submitTransfer()">Transfer</button>
+      <button class="btn-modal secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Receipt Modal -->
+  <div class="modal" id="receiptModal">
+    <div class="modal-content">
+      <div class="modal-header">Transaction Receipt</div>
+      <div id="receiptContent" class="receipt"></div>
+      <button class="btn-modal" onclick="closeModal()">Done</button>
     </div>
   </div>
 
   <script>
     const API = window.location.origin;
-    let currentAction = null;
-    let pendingTransferData = null;
     let isUnlocked = sessionStorage.getItem('opay_unlocked') === 'true';
-
-    // Nigerian banks (common ones)
-    const BANKS = [
-      "Access Bank", "Zenith Bank", "GTBank", "First Bank", "UBA",
-      "Fidelity Bank", "Union Bank", "Stanbic IBTC", "Sterling Bank",
-      "Wema Bank", "Polaris Bank", "Keystone Bank", "FCMB",
-      "Ecobank", "Heritage Bank", "Unity Bank", "OPay", "PalmPay", "Kuda"
-    ];
-
-    async function api(method, path, body) {
-      const res = await fetch(API + path, {
-        method,
-        headers: { 'Content-Type': 'application/json', 'X-Actor': 'frontend-ui' },
-        body: body ? JSON.stringify(body) : undefined
-      });
-      return res.json();
-    }
-
-    function requirePin(callback) {
-      if (isUnlocked) return callback();
-      pendingAction = callback;
-      document.getElementById('pinModal').classList.add('active');
-      document.getElementById('pinInput').value = '';
-      document.getElementById('pinInput').focus();
-      updatePinDots();
-    }
-
     let pendingAction = null;
 
+    async function api(method, path, body) {
+      try {
+        const res = await fetch(API + path, {
+          method,
+          headers: { 'Content-Type': 'application/json', 'X-Actor': 'frontend-ui' },
+          body: body ? JSON.stringify(body) : undefined
+        });
+        return await res.json();
+      } catch (e) {
+        console.error('API Error:', e);
+        return { success: false, message: 'Network error' };
+      }
+    }
+
+    // PIN Management
     function updatePinDots() {
       const val = document.getElementById('pinInput').value;
       const dots = document.querySelectorAll('#pinDots .pin-dot');
@@ -247,7 +746,11 @@
         isUnlocked = true;
         sessionStorage.setItem('opay_unlocked', 'true');
         closePinModal();
-        if (pendingAction) pendingAction();
+        if (pendingAction) {
+          const action = pendingAction;
+          pendingAction = null;
+          action();
+        }
       } else {
         alert('Wrong PIN. Default is 1234');
         document.getElementById('pinInput').value = '';
@@ -257,7 +760,107 @@
 
     function closePinModal() {
       document.getElementById('pinModal').classList.remove('active');
-      pendingAction = null;
+    }
+
+    function requirePin(callback) {
+      if (isUnlocked) return callback();
+      pendingAction = callback;
+      document.getElementById('pinModal').classList.add('active');
+      document.getElementById('pinInput').value = '';
+      document.getElementById('pinInput').focus();
+      updatePinDots();
+    }
+
+    function openModal(type) {
+      requirePin(() => {
+        if (type === 'topup') {
+          document.getElementById('topupModal').classList.add('active');
+        } else if (type === 'transfer') {
+          document.getElementById('transferModal').classList.add('active');
+        }
+      });
+    }
+
+    function closeModal() {
+      document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+    }
+
+    async function submitTopup() {
+      const amount = parseFloat(document.getElementById('topupAmount').value) || 0;
+      const reason = document.getElementById('topupReason').value || 'Top-up';
+
+      if (amount <= 0) return alert('Enter a valid amount');
+
+      const amountCents = Math.round(amount * 100);
+      const r = await api('POST', '/topup', { amount: amountCents, reason });
+
+      if (r.success) {
+        showReceipt({
+          type: 'Top Up',
+          amount,
+          reference: r.data.entry.id,
+          newBalance: r.data.newAvailable,
+          status: 'Successful'
+        });
+        refresh();
+        closeModal();
+      } else {
+        alert(r.message || 'Failed');
+      }
+    }
+
+    async function submitTransfer() {
+      const amount = parseFloat(document.getElementById('transferAmount').value) || 0;
+      const bank = document.getElementById('transferBank').value;
+      const account = document.getElementById('transferAccount').value;
+      const recipient = document.getElementById('transferRecipient').value || 'Unknown';
+
+      if (amount <= 0) return alert('Enter a valid amount');
+      if (!account) return alert('Enter account number or phone');
+
+      const amountCents = Math.round(amount * 100);
+      const r = await api('POST', '/transfer', {
+        amount: amountCents,
+        recipient: `${recipient} (${bank} • ${account})`,
+        bank,
+        account
+      });
+
+      if (r.success) {
+        showReceipt({
+          type: 'Transfer',
+          amount,
+          recipient,
+          bank,
+          account,
+          reference: r.data.reference,
+          newBalance: r.data.newAvailable,
+          status: 'Successful'
+        });
+        refresh();
+        closeModal();
+      } else {
+        alert(r.message || 'Transfer failed');
+      }
+    }
+
+    function showReceipt(data) {
+      const receipt = document.getElementById('receiptContent');
+      receipt.innerHTML = `
+        <div class="receipt">
+          <div class="receipt-icon">✅</div>
+          <div class="receipt-status">${data.status}</div>
+          <div class="receipt-amount">₦${data.amount.toLocaleString()}</div>
+          <div class="receipt-row"><span>Type</span><span>${data.type}</span></div>
+          ${data.recipient ? `<div class="receipt-row"><span>To</span><span>${data.recipient}</span></div>` : ''}
+          ${data.bank ? `<div class="receipt-row"><span>Bank</span><span>${data.bank}</span></div>` : ''}
+          ${data.account ? `<div class="receipt-row"><span>Account</span><span>${data.account}</span></div>` : ''}
+          <div class="receipt-row"><span>Reference</span><span style="font-size: 10px;">${data.reference}</span></div>
+          <div class="receipt-row"><span>New Balance</span><span>₦${(data.newBalance / 100).toLocaleString()}</span></div>
+          <div class="receipt-row"><span>Time</span><span>${new Date().toLocaleString()}</span></div>
+        </div>
+      `;
+      document.getElementById('receiptModal').classList.add('active');
     }
 
     async function refresh() {
@@ -265,191 +868,49 @@
         const r = await api('GET', '/balance');
         if (r.success) {
           document.getElementById('balance').textContent = r.data.availableBalanceFormatted;
-          document.getElementById('safe').textContent = 'Safe to spend: ' + r.data.safeToSpendFormatted;
-          const badge = document.getElementById('badge');
-          const btn = document.getElementById('unlimitedBtn');
-          if (r.data.unlimitedMode) {
-            badge.textContent = '🔥 UNLIMITED MODE';
-            badge.className = 'badge';
-            btn.textContent = 'Unlimited ON';
-          } else {
-            badge.textContent = 'Normal Mode';
-            badge.className = 'badge off';
-            btn.textContent = 'Unlimited OFF';
-          }
+          loadTransactions();
         }
-        loadLedger();
       } catch (e) {
-        document.getElementById('status').textContent = 'Server offline. Run: npm start';
+        console.error('Refresh error:', e);
       }
     }
 
-    async function loadLedger() {
-      const r = await api('GET', '/ledger?limit=12');
-      const log = document.getElementById('log');
-      if (!r.data || !r.data.length) {
-        log.innerHTML = '<div style="color:#94a3b8">No transactions yet</div>';
-        return;
-      }
-      log.innerHTML = r.data.map(e => `
-        <div class="log-item ${['credit','release'].includes(e.type) ? 'success' : ''}">
-          <strong>${e.type.toUpperCase()}</strong> ₦${(e.amount/100).toLocaleString()}
-          <span style="float:right;color:#94a3b8">${new Date(e.timestamp).toLocaleTimeString()}</span><br/>
-          <small>${e.meta?.reason || e.meta?.recipient || ''} → ₦${(e.afterBalance/100).toLocaleString()}</small>
-        </div>
-      `).join('');
-    }
-
-    async function loadAudit() {
-      requirePin(async () => {
-        const r = await api('GET', '/audit?limit=25');
-        const log = document.getElementById('log');
-        log.innerHTML = r.data.map(e => `
-          <div class="log-item ${e.success ? 'success' : 'fail'}">
-            <strong>${e.action}</strong> ${e.success ? '✅' : '❌'}
-            <span style="float:right;color:#94a3b8">${new Date(e.timestamp).toLocaleTimeString()}</span><br/>
-            <small>${e.errorMessage || e.reason || ''} ${e.amount ? '₦'+(e.amount/100).toLocaleString() : ''}</small>
-          </div>
-        `).join('');
-      });
-    }
-
-    function openModal(type) {
-      requirePin(() => {
-        currentAction = type;
-        const modal = document.getElementById('modal');
-        const title = document.getElementById('modalTitle');
-        const body = document.getElementById('modalBody');
-        const buttons = document.getElementById('modalButtons');
-        buttons.style.display = 'flex';
-        modal.classList.add('active');
-
-        if (type === 'topup') {
-          title.textContent = 'Top Up Wallet';
-          body.innerHTML = `
-            <label>Amount (₦)</label>
-            <input type="number" id="amount" placeholder="e.g. 5000" min="1" />
-            <label>Reason (optional)</label>
-            <input type="text" id="reason" placeholder="Salary, gift..." />
-          `;
-        } else if (type === 'transfer') {
-          title.textContent = 'Transfer Money';
-          body.innerHTML = `
-            <label>Amount (₦)</label>
-            <input type="number" id="amount" placeholder="e.g. 1500" min="1" />
-            <label>Bank</label>
-            <select id="bank">
-              ${BANKS.map(b => `<option value="${b}">${b}</option>`).join('')}
-            </select>
-            <label>Account Number / Phone</label>
-            <input type="text" id="account" placeholder="0123456789 or 0803..." />
-            <label>Recipient Name</label>
-            <input type="text" id="recipient" placeholder="John Doe" />
-            <label>Narration (optional)</label>
-            <input type="text" id="reason" placeholder="Payment for..." />
-          `;
+    async function loadTransactions() {
+      try {
+        const r = await api('GET', '/ledger?limit=10');
+        const container = document.getElementById('transactions-list');
+        
+        if (!r.data || !r.data.length) {
+          container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div>No transactions yet</div>';
+          return;
         }
-      });
-    }
 
-    function closeModal() {
-      document.getElementById('modal').classList.remove('active');
-      currentAction = null;
-      pendingTransferData = null;
-    }
-
-    async function submitModal() {
-      const amountNaira = parseFloat(document.getElementById('amount')?.value) || 0;
-      const amount = Math.round(amountNaira * 100);
-      const reason = document.getElementById('reason')?.value || '';
-
-      if (amount <= 0) return alert('Enter a valid amount');
-
-      if (currentAction === 'topup') {
-        const r = await api('POST', '/topup', { amount, reason });
-        if (r.success) {
-          showReceipt({
-            type: 'Top Up',
-            amount: amountNaira,
-            reference: r.data.entry.id,
-            newBalance: r.data.newAvailable,
-            status: 'Successful'
-          });
-          refresh();
-        } else alert(r.message);
-      } else if (currentAction === 'transfer') {
-        const bank = document.getElementById('bank').value;
-        const account = document.getElementById('account').value;
-        const recipient = document.getElementById('recipient').value || 'Unknown';
-
-        if (!account) return alert('Enter account number or phone');
-
-        const r = await api('POST', '/transfer', {
-          amount,
-          reason,
-          recipient: `${recipient} (${bank} • ${account})`,
-          bank,
-          account
-        });
-
-        if (r.success) {
-          showReceipt({
-            type: 'Transfer',
-            amount: amountNaira,
-            recipient: `${recipient}`,
-            bank,
-            account,
-            reference: r.data.reference,
-            newBalance: r.data.newAvailable,
-            status: 'Successful'
-          });
-          refresh();
-        } else {
-          alert(r.message || 'Transfer failed');
-        }
+        container.innerHTML = r.data.map(e => {
+          const isCredit = ['credit', 'release'].includes(e.type);
+          return `
+            <div class="transaction-item">
+              <div class="transaction-icon">${isCredit ? '↓' : '↑'}</div>
+              <div class="transaction-details">
+                <div class="transaction-name">${e.meta?.reason || e.meta?.recipient || e.type.toUpperCase()}</div>
+                <div class="transaction-time">${new Date(e.timestamp).toLocaleDateString()}, ${new Date(e.timestamp).toLocaleTimeString()}</div>
+              </div>
+              <div class="transaction-amount">
+                <div class="amount" style="color: ${isCredit ? 'var(--success-green)' : 'white'}">
+                  ${isCredit ? '+' : '-'}₦${(e.amount / 100).toLocaleString()}
+                </div>
+                <div class="status-badge">Successful</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        console.error('Load transactions error:', e);
       }
     }
 
-    function showReceipt(data) {
-      const modal = document.getElementById('modal');
-      const title = document.getElementById('modalTitle');
-      const body = document.getElementById('modalBody');
-      const buttons = document.getElementById('modalButtons');
-
-      title.textContent = 'Transaction Receipt';
-      buttons.style.display = 'none';
-
-      body.innerHTML = `
-        <div class="receipt">
-          <div style="font-size:2.5rem;margin-bottom:8px">✅</div>
-          <div style="color:#4ade80;font-weight:600">${data.status}</div>
-          <div class="amount">₦${data.amount.toLocaleString()}</div>
-          <div class="receipt-row"><span>Type</span><span>${data.type}</span></div>
-          ${data.recipient ? `<div class="receipt-row"><span>To</span><span>${data.recipient}</span></div>` : ''}
-          ${data.bank ? `<div class="receipt-row"><span>Bank</span><span>${data.bank}</span></div>` : ''}
-          ${data.account ? `<div class="receipt-row"><span>Account</span><span>${data.account}</span></div>` : ''}
-          <div class="receipt-row"><span>Reference</span><span style="font-size:0.75rem">${data.reference}</span></div>
-          <div class="receipt-row"><span>New Balance</span><span>₦${(data.newBalance/100).toLocaleString()}</span></div>
-          <div class="receipt-row"><span>Time</span><span>${new Date().toLocaleString()}</span></div>
-          <button onclick="closeModal()" style="width:100%;margin-top:20px">Done</button>
-        </div>
-      `;
-      modal.classList.add('active');
-    }
-
-    async function toggleUnlimited() {
-      requirePin(async () => {
-        const badge = document.getElementById('badge');
-        const currentlyOn = badge.textContent.includes('UNLIMITED');
-        const r = await api('POST', '/unlimited', { enabled: !currentlyOn });
-        alert(r.message);
-        refresh();
-      });
-    }
-
-    // Init
+    // Initialize
     refresh();
-    setInterval(refresh, 10000);
+    setInterval(refresh, 15000);
   </script>
 </body>
 </html>
