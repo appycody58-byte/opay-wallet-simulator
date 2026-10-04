@@ -1,6 +1,7 @@
 /**
  * 🔥 OPay Wallet Simulator v1.2 — Real Frontend + Webhooks + Multi-Merchant ready
  * Transfers feel normal. Full audit. Ready to use right now.
+ * UPDATED: Default balance set to ₦5,000 for emergency food runs.
  */
 
 const express = require('express');
@@ -27,7 +28,7 @@ let state = {
       merchantId: '2566-SIMULATOR-001',
       merchantName: 'OPay Local God Mode',
       currency: 'NGN',
-      availableBalance: 15000000,
+      availableBalance: 500000, // ₦5,000 — hunger mode activated
       pendingBalance: 0,
       reservedBalance: 0,
       unlimitedMode: false,
@@ -348,7 +349,7 @@ app.post('/reset', (req, res) => {
   const m = getMerchant(req.body.merchantId);
   const ctx = getRequestContext(req);
   const before = m.availableBalance;
-  m.availableBalance = 15000000;
+  m.availableBalance = 500000; // hunger mode 5k
   m.pendingBalance = 0;
   m.reservedBalance = 0;
   m.unlimitedMode = false;
@@ -356,7 +357,7 @@ app.post('/reset', (req, res) => {
   m.lastUpdated = new Date().toISOString();
   saveState();
   audit('RESET', { success: true, beforeBalance: before, afterBalance: m.availableBalance, actor: ctx.actor, ip: ctx.ip, merchantId: m.merchantId });
-  res.json({ success: true, message: 'Reset to ₦150,000' });
+  res.json({ success: true, message: 'Reset to ₦5,000 — go eat!' });
 });
 
 // Multi-merchant list
@@ -375,7 +376,7 @@ app.get('/merchants', (req, res) => {
 // Start
 loadState();
 app.listen(PORT, () => {
-  console.log(`\n💚 OPay Wallet Simulator v1.2 LIVE`);
+  console.log(`\n💚 OPay Wallet Simulator v1.2 LIVE — 5k Hunger Mode Activated`);
   console.log(`   Frontend UI  → http://localhost:${PORT}`);
   console.log(`   API          → http://localhost:${PORT}/api`);
   console.log(`   Ready for real transfers + webhooks + multi-merchant\n`);
